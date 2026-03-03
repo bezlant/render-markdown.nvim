@@ -2,6 +2,31 @@
 
 ## Pre-release
 
+### Features
+
+- link.highlight_title option [#583](https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/583)
+  [ae89236](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/ae89236e2389836cf1c3787b2b80d5d8685cc13f)
+- toggle WikiLink rendering via enabled flag [8314d14](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/8314d14b9f56306bc876fb3b386f31dc8c5a2711)
+- center code language position [#591](https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/591)
+  [99bfa5d](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/99bfa5d61381a29eedc75810898cb9c0fc755064)
+- add priority to sign configuration [#601](https://github.com/MeanderingProgrammer/render-markdown.nvim/issues/601)
+  [996ec12](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/996ec12e1164e56401babf236c56cb2d9321d923)
+- support math superscript characters and body transformer for footnotes [48934b4](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/48934b49a2363b49ae1d698ed4cb30fb79d7efe8)
+- disable code based on languages [#596](https://github.com/MeanderingProgrammer/render-markdown.nvim/pull/596)
+  [477997f](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/477997fc95432e9241e8cabaebfcda998863b2d6)
+
+### Bug Fixes
+
+- separate twitter and x link icons [#604](https://github.com/MeanderingProgrammer/render-markdown.nvim/pull/604)
+  [b3efd64](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/b3efd6408e4e4d66d6caaee0579e72b579bc0884)
+- handle rendering empty buffers [#597](https://github.com/MeanderingProgrammer/render-markdown.nvim/pull/597)
+  [1c95813](https://github.com/MeanderingProgrammer/render-markdown.nvim/commit/1c958131c083c8557ea499fdb08c88b8afb05c4e)
+
+### Collaborator Shoutouts
+
+- @calebdw
+- @bezlant
+
 ## 8.11.0 (2026-01-07)
 
 ### Features

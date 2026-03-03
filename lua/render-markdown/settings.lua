@@ -389,6 +389,7 @@ M.code = {}
 ---@field language_name boolean
 ---@field language_info boolean
 ---@field language_pad number
+---@field disable string[]
 ---@field disable_background boolean|string[]
 ---@field width render.md.code.Width
 ---@field left_margin number
@@ -418,6 +419,7 @@ M.code = {}
 M.code.position = {
     left = 'left',
     right = 'right',
+    center = 'center',
 }
 
 ---@enum render.md.code.Width
@@ -457,8 +459,9 @@ M.code.default = {
     -- Turn on / off language heading related rendering.
     language = true,
     -- Determines where language icon is rendered.
-    -- | right | right side of code block |
-    -- | left  | left side of code block  |
+    -- | center | center of code block |
+    -- | right  | right of code block  |
+    -- | left   | left of code block   |
     position = 'left',
     -- Whether to include the language icon above code blocks.
     language_icon = true,
@@ -469,6 +472,8 @@ M.code.default = {
     -- Amount of padding to add around the language.
     -- If a float < 1 is provided it is treated as a percentage of available window space.
     language_pad = 0,
+    -- A list of language names for which rendering will be disabled.
+    disable = {},
     -- A list of language names for which background highlighting will be disabled.
     -- Likely because that language has background highlights itself.
     -- Use a boolean to make behavior apply to all languages.
@@ -548,6 +553,7 @@ function M.code.schema()
         language_name = { type = 'boolean' },
         language_info = { type = 'boolean' },
         language_pad = { type = 'number' },
+        disable = { list = { type = 'string' } },
         disable_background = {
             union = { { list = { type = 'string' } }, { type = 'boolean' } },
         },
@@ -1223,6 +1229,7 @@ M.link = {}
 ---@class (exact) render.md.link.Config: render.md.base.Config
 ---@field footnote render.md.link.footnote.Config
 ---@field image string
+---@field image_custom boolean
 ---@field email string
 ---@field hyperlink string
 ---@field highlight string
@@ -1230,7 +1237,18 @@ M.link = {}
 ---@field wiki render.md.link.wiki.Config
 ---@field custom table<string, render.md.link.custom.Config>
 
----@class (exact) render.md.link.Context
+---@class (exact) render.md.link.footnote.Context
+---@field text string
+
+---@class (exact) render.md.link.footnote.Config
+---@field enabled boolean
+---@field icon string
+---@field body fun(ctx: render.md.link.footnote.Context): string?
+---@field superscript boolean
+---@field prefix string
+---@field suffix string
+
+---@class (exact) render.md.link.wiki.Context
 ---@field buf integer
 ---@field row integer
 ---@field start_col integer
@@ -1238,16 +1256,10 @@ M.link = {}
 ---@field destination string
 ---@field alias? string
 
----@class (exact) render.md.link.footnote.Config
+---@class (exact) render.md.link.wiki.Config
 ---@field enabled boolean
 ---@field icon string
----@field superscript boolean
----@field prefix string
----@field suffix string
-
----@class (exact) render.md.link.wiki.Config
----@field icon string
----@field body fun(ctx: render.md.link.Context): render.md.mark.Text|string?
+---@field body fun(ctx: render.md.link.wiki.Context): render.md.mark.Text|string?
 ---@field highlight string
 ---@field scope_highlight? string
 
@@ -1276,6 +1288,11 @@ M.link.default = {
         enabled = true,
         -- Inlined with content.
         icon = '󰯔 ',
+        -- Custom processing for footnote body to show.
+        -- Runs before prefix / suffix are added and superscript processing.
+        body = function(ctx)
+            return ctx.text
+        end,
         -- Replace value with superscript equivalent.
         superscript = true,
         -- Added before link content.
@@ -1285,6 +1302,8 @@ M.link.default = {
     },
     -- Inlined with 'image' elements.
     image = '󰥶 ',
+    -- Check custom for 'image' elements.
+    image_custom = true,
     -- Inlined with 'email_autolink' elements.
     email = '󰀓 ',
     -- Fallback icon for 'inline_link' and 'uri_autolink' elements.
@@ -1295,16 +1314,22 @@ M.link.default = {
     highlight_title = 'RenderMarkdownLinkTitle',
     -- Applies to WikiLink elements.
     wiki = {
+        -- Turn on / off WikiLink rendering.
+        enabled = true,
+        -- Inlined with content.
         icon = '󱗖 ',
+        -- Custom processing for WikiLink body to show.
         body = function()
             return nil
         end,
+        -- Applies to the inlined icon.
         highlight = 'RenderMarkdownWikiLink',
+        -- Highlight for item associated with the WikiLink.
         scope_highlight = nil,
     },
     -- Define custom destination patterns so icons can quickly inform you of what a link
-    -- contains. Applies to 'inline_link', 'uri_autolink', and wikilink nodes. When multiple
-    -- patterns match a link the one with the longer pattern is used.
+    -- contains. Applies to 'image', 'inline_link', 'uri_autolink', and WikiLink nodes.
+    -- When multiple patterns match a link the one with the longer pattern is used.
     -- The key is for healthcheck and to allow users to change its values, value type below.
     -- | pattern   | matched against the destination text                            |
     -- | icon      | gets inlined before the link text                               |
@@ -1328,8 +1353,9 @@ M.link.default = {
         slack = { pattern = 'slack%.com', icon = '󰒱 ' },
         stackoverflow = { pattern = 'stackoverflow%.com', icon = '󰓌 ' },
         steam = { pattern = 'steampowered%.com', icon = ' ' },
-        twitter = { pattern = 'x%.com', icon = ' ' },
+        twitter = { pattern = 'twitter%.com', icon = ' ' },
         wikipedia = { pattern = 'wikipedia%.org', icon = '󰖬 ' },
+        x = { pattern = 'x%.com', icon = ' ' },
         youtube = { pattern = 'youtube[^.]*%.com', icon = '󰗃 ' },
         youtube_short = { pattern = 'youtu%.be', icon = '󰗃 ' },
     },
@@ -1352,18 +1378,21 @@ function M.link.schema()
             record = {
                 enabled = { type = 'boolean' },
                 icon = { type = 'string' },
+                body = { type = 'function' },
                 superscript = { type = 'boolean' },
                 prefix = { type = 'string' },
                 suffix = { type = 'string' },
             },
         },
         image = { type = 'string' },
+        image_custom = { type = 'boolean' },
         email = { type = 'string' },
         hyperlink = { type = 'string' },
         highlight = { type = 'string' },
         highlight_title = { type = 'string' },
         wiki = {
             record = {
+                enabled = { type = 'boolean' },
                 icon = { type = 'string' },
                 body = { type = 'function' },
                 highlight = { type = 'string' },
@@ -1748,12 +1777,15 @@ M.sign = {}
 
 ---@class (exact) render.md.sign.Config
 ---@field enabled boolean
+---@field priority? integer
 ---@field highlight string
 
 ---@type render.md.sign.Config
 M.sign.default = {
     -- Turn on / off sign rendering.
     enabled = true,
+    -- Priority to assign to sign.
+    priority = nil,
     -- Applies to background of sign text.
     highlight = 'RenderMarkdownSign',
 }
@@ -1764,6 +1796,7 @@ function M.sign.schema()
     return {
         record = {
             enabled = { type = 'boolean' },
+            priority = { optional = true, type = 'number' },
             highlight = { type = 'string' },
         },
     }

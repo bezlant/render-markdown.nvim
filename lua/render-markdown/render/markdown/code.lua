@@ -5,7 +5,9 @@ local icons = require('render-markdown.lib.icons')
 local str = require('render-markdown.lib.str')
 
 ---@class render.md.code.Data
----@field language integer
+---@field info? render.md.Node
+---@field language? render.md.Node
+---@field language_padding integer
 ---@field padding integer
 ---@field body integer
 ---@field margin integer
@@ -37,26 +39,33 @@ function Render:setup()
     if self.node:height() <= 2 then
         return false
     end
+
+    local info = self.node:child('info_string')
+    local language = info and info:child('language')
+
     local widths = self.node:widths()
     local width = vim.fn.max(widths)
 
-    local language = self:offset(self.config.language_pad, width)
+    local language_padding = self:offset(self.config.language_pad, width)
     local left = self:offset(self.config.left_pad, width)
     local right = self:offset(self.config.right_pad, width)
 
     local body = str.width(self.config.language_left)
         + str.width(self.config.language_right)
-        + language
+        + language_padding
         + widths[1]
     body = math.max(body, left + width + right, self.config.min_width)
 
     self.data = {
+        info = info,
         language = language,
+        language_padding = language_padding,
         padding = left,
         body = body,
         margin = self:offset(self.config.left_margin, body),
     }
-    return true
+
+    return self:enabled(self.config.disable)
 end
 
 ---@private
@@ -76,6 +85,18 @@ function Render:offset(value, used)
     return result
 end
 
+---@private
+---@param disable boolean|string[]
+---@return boolean
+function Render:enabled(disable)
+    if type(disable) == 'boolean' then
+        return not disable
+    else
+        local language = self.data.language
+        return not language or not vim.tbl_contains(disable, language.text)
+    end
+end
+
 ---@protected
 function Render:run()
     local start_row = self.node.start_row
@@ -83,21 +104,19 @@ function Render:run()
 
     local above = self.node:child('fenced_code_block_delimiter', start_row)
     local below = self.node:child('fenced_code_block_delimiter', end_row)
-    local info = self.node:child('info_string')
 
     if self.config.conceal_delimiters then
+        self.marks:over(self.config, true, self.data.info, { conceal = '' })
         self.marks:over(self.config, true, above, { conceal = '' })
         self.marks:over(self.config, true, below, { conceal = '' })
-        self.marks:over(self.config, true, info, { conceal = '' })
     end
 
-    local language = info and info:child('language')
-    if not self:language(info, language, above) then
+    if not self:language(above) then
         self:border(above, self.config.above)
     end
     self:border(below, self.config.below)
 
-    local background = self:background_enabled(language)
+    local background = self:enabled(self.config.disable_background)
     if background then
         self:background(start_row + 1, end_row - 1)
     end
@@ -105,14 +124,16 @@ function Render:run()
 end
 
 ---@private
----@param info? render.md.Node
----@param language? render.md.Node
 ---@param delim? render.md.Node
 ---@return boolean
-function Render:language(info, language, delim)
+function Render:language(delim)
     if not self.config.language then
         return false
     end
+
+    local info = self.data.info
+    local language = self.data.language
+    local padding = self.data.language_padding
     if not info or not language or not delim then
         return false
     end
@@ -155,25 +176,32 @@ function Render:language(info, language, delim)
         :extend(text)
         :text(self.config.language_right, border_hl)
 
-    local border = border_hl and self.config.language_border or ' '
-    local width = self.data.body - delim.start_col
-
-    local prefix = self:line()
     -- code blocks can pick up varying amounts of leading white space
     -- this is lumped into the delimiter node and needs to be handled
-    prefix:rep(border, str.spaces('start', delim.text), border_hl)
+    local prefix = str.spaces('start', delim.text)
+    local suffix = 0
+    -- space within block after accounting for white space and padding
+    local width = self.data.body - delim.start_col
+    local extra = width - prefix - body:width() - suffix - padding ---@type integer
     if self.config.position == 'left' then
-        prefix:rep(border, self.data.language, border_hl)
-        body:rep(border, width - prefix:width() - body:width(), border_hl)
+        prefix = prefix + padding
+        suffix = suffix + extra
+    elseif self.config.position == 'right' then
+        prefix = prefix + extra
+        suffix = suffix + padding
     else
-        body:rep(border, self.data.language, border_hl)
-        prefix:rep(border, width - prefix:width() - body:width(), border_hl)
+        prefix = prefix + padding + math.floor(extra / 2)
+        suffix = suffix + math.ceil(extra / 2)
+    end
+    if self.config.width == 'full' then
+        suffix = suffix + vim.o.columns
     end
 
-    local line = prefix:extend(body)
-    if self.config.width == 'full' then
-        line:rep(border, vim.o.columns, border_hl)
-    end
+    local border = border_hl and self.config.language_border or ' '
+    local line = self:line()
+        :rep(border, prefix, border_hl)
+        :extend(body)
+        :rep(border, suffix, border_hl)
     return self.marks:start(self.config, 'code_language', delim, {
         virt_text = line:get(),
         virt_text_pos = 'overlay',
@@ -207,18 +235,6 @@ function Render:border(node, thin)
         virt_text = { { icon:rep(width), highlight } },
         virt_text_pos = 'overlay',
     })
-end
-
----@private
----@param language? render.md.Node
----@return boolean
-function Render:background_enabled(language)
-    local disable = self.config.disable_background
-    if type(disable) == 'boolean' then
-        return not disable
-    else
-        return language == nil or not vim.tbl_contains(disable, language.text)
-    end
 end
 
 ---@private

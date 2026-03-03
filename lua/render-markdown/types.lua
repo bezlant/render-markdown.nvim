@@ -100,6 +100,7 @@
 ---@field language_name? boolean
 ---@field language_info? boolean
 ---@field language_pad? number
+---@field disable? string[]
 ---@field disable_background? boolean|string[]
 ---@field width? render.md.code.Width
 ---@field left_margin? number
@@ -214,6 +215,7 @@
 ---@class (exact) render.md.link.UserConfig: render.md.base.UserConfig
 ---@field footnote? render.md.link.footnote.UserConfig
 ---@field image? string
+---@field image_custom? boolean
 ---@field email? string
 ---@field hyperlink? string
 ---@field highlight? string
@@ -224,13 +226,15 @@
 ---@class (exact) render.md.link.footnote.UserConfig
 ---@field enabled? boolean
 ---@field icon? string
+---@field body? fun(ctx: render.md.link.footnote.Context): string?
 ---@field superscript? boolean
 ---@field prefix? string
 ---@field suffix? string
 
 ---@class (exact) render.md.link.wiki.UserConfig
+---@field enabled? boolean
 ---@field icon? string
----@field body? fun(ctx: render.md.link.Context): render.md.mark.Text|string?
+---@field body? fun(ctx: render.md.link.wiki.Context): render.md.mark.Text|string?
 ---@field highlight? string
 ---@field scope_highlight? string
 
@@ -293,6 +297,7 @@
 
 ---@class (exact) render.md.sign.UserConfig
 ---@field enabled? boolean
+---@field priority? integer
 ---@field highlight? string
 
 ---@alias render.md.window.UserConfigs table<string, render.md.window.UserConfig>
